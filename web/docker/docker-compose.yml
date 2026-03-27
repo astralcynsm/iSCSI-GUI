@@ -1,0 +1,45 @@
+version: "3.8"
+
+services:
+  iscsi-gui-web:
+    image: ghcr.io/example/iscsi-gui-web:dev
+    container_name: iscsi-gui-web
+    restart: unless-stopped
+    ports:
+      - "8088:8080"
+    volumes:
+      - /run/iscsi-agent:/run/iscsi-agent:ro
+    environment:
+      - GATEWAY_LISTEN=0.0.0.0:8080
+      - AGENT_SOCKET=/run/iscsi-agent/agent.sock
+
+    x-casaos:
+      envs: []
+      ports:
+        - container: "8080"
+          description:
+            en_us: iSCSIGUI Web
+      volumes:
+        - container: /run/iscsi-agent
+          description:
+            en_us: Host agent socket
+
+x-casaos:
+  architectures:
+    - amd64
+    - arm64
+  main: iscsi-gui-web
+  category: Utilities
+  author: iSCSIGUI
+  developer: iSCSIGUI
+  hostname: ""
+  icon: ""
+  index: /
+  port_map: "8088"
+  scheme: http
+  title:
+    en_us: iSCSIGUI
+  tagline:
+    en_us: iSCSI target management GUI for ZimaOS
+  description:
+    en_us: Mode B architecture web app that talks to host iscsi-agent through Unix socket.

@@ -1,0 +1,21 @@
+[Unit]
+Description=iSCSI GUI Web Gateway
+After=network.target
+After=iscsi-agent.service
+Requires=iscsi-agent.service
+
+[Service]
+Type=simple
+User=root
+Group=root
+Environment=GATEWAY_LISTEN=0.0.0.0:18081
+Environment=AGENT_SOCKET=/run/iscsi-agent/agent.sock
+ExecStart=/usr/bin/iscsi-web-gateway
+Restart=on-failure
+RestartSec=2
+TimeoutStartSec=15
+TimeoutStopSec=15
+LimitNOFILE=65536
+
+[Install]
+WantedBy=multi-user.target

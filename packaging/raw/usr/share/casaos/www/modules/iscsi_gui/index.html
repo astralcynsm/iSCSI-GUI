@@ -1,0 +1,2011 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>iSCSI GUI</title>
+    <style>
+      :root {
+        --bg-1: #eef6ef;
+        --bg-2: #d5e6d8;
+        --ink: #183024;
+        --muted: #4d6655;
+        --card: #ffffffcc;
+        --line: #c1d4c2;
+        --ok: #117d45;
+        --warn: #9f5c00;
+        --err: #9f1c1c;
+      }
+
+      [data-theme="dark"] {
+        --bg-1: #17201b;
+        --bg-2: #0f1512;
+        --ink: #e3efe5;
+        --muted: #a7b8ab;
+        --card: #1b2620dd;
+        --line: #33453a;
+        --ok: #7fe0a7;
+        --warn: #ffcc80;
+        --err: #ff9d9d;
+      }
+
+      * {
+        box-sizing: border-box;
+      }
+
+      body {
+        margin: 0;
+        min-height: 100vh;
+        color: var(--ink);
+        font-family: "IBM Plex Sans", "Noto Sans", "PingFang SC", sans-serif;
+        background:
+          radial-gradient(900px 500px at 10% -5%, #ffffffdd, transparent 70%),
+          radial-gradient(900px 600px at 95% 105%, #c8d8f0aa, transparent 60%),
+          linear-gradient(145deg, var(--bg-1), var(--bg-2));
+      }
+
+      body[data-theme="dark"] {
+        background:
+          radial-gradient(900px 500px at 10% -5%, #243429aa, transparent 70%),
+          radial-gradient(900px 600px at 95% 105%, #1a2933aa, transparent 60%),
+          linear-gradient(145deg, var(--bg-1), var(--bg-2));
+      }
+
+      .shell {
+        max-width: 1120px;
+        margin: 72px auto 36px;
+        padding: 0 16px;
+      }
+
+      .hero {
+        border: 1px solid var(--line);
+        background: var(--card);
+        border-radius: 18px;
+        padding: 18px 20px;
+        box-shadow: 0 14px 28px #12211718;
+      }
+
+      .title {
+        margin: 0;
+        font-size: clamp(24px, 3.1vw, 34px);
+        letter-spacing: 0.02em;
+        font-family: "Space Grotesk", "IBM Plex Sans", sans-serif;
+      }
+
+      .subtitle {
+        margin: 8px 0 0;
+        color: var(--muted);
+      }
+
+      .grid {
+        margin-top: 12px;
+        display: grid;
+        grid-template-columns: repeat(12, 1fr);
+        gap: 12px;
+      }
+
+      .card {
+        grid-column: span 12;
+        border: 1px solid var(--line);
+        background: var(--card);
+        border-radius: 14px;
+        padding: 14px;
+        box-shadow: 0 8px 18px #12211712;
+      }
+
+      @media (min-width: 900px) {
+        .card.health,
+        .card.sessions {
+          grid-column: span 6;
+        }
+
+        .card.targets,
+        .card.backstores {
+          grid-column: span 6;
+        }
+      }
+
+      .card-head {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      .card-title {
+        margin: 0;
+        font-size: 15px;
+        color: var(--muted);
+      }
+
+      .status-chip {
+        display: inline-block;
+        padding: 2px 10px;
+        border-radius: 999px;
+        font-size: 12px;
+        line-height: 20px;
+        border: 1px solid transparent;
+        font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+      }
+
+      .status-ok {
+        background: #d7f2e2;
+        color: var(--ok);
+        border-color: #99ddb6;
+      }
+
+      .status-warn {
+        background: #fde8cc;
+        color: var(--warn);
+        border-color: #f0c891;
+      }
+
+      .status-err {
+        background: #fddcdb;
+        color: var(--err);
+        border-color: #f2aaa8;
+      }
+
+      [data-theme="dark"] .status-ok {
+        background: #173224;
+        border-color: #2f6e4c;
+      }
+
+      [data-theme="dark"] .status-warn {
+        background: #3a2e17;
+        border-color: #8e6a2b;
+      }
+
+      [data-theme="dark"] .status-err {
+        background: #3f1f1f;
+        border-color: #8c4444;
+      }
+
+      .metric {
+        font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+        font-size: 22px;
+      }
+
+      .muted {
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .note {
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: #fbfffc;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .dep-list {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 6px;
+      }
+
+      .dep-row {
+        display: grid;
+        grid-template-columns: 120px 64px 1fr;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: #fbfffc;
+        font-size: 12px;
+      }
+
+      .dep-state {
+        font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+        text-transform: uppercase;
+        font-size: 11px;
+        letter-spacing: 0.03em;
+      }
+
+      .dep-pass {
+        color: var(--ok);
+      }
+
+      .dep-warn {
+        color: var(--warn);
+      }
+
+      .dep-info {
+        color: var(--muted);
+      }
+
+      .actions {
+        display: flex;
+        gap: 8px;
+        flex-wrap: wrap;
+      }
+
+      .stack {
+        display: grid;
+        gap: 8px;
+      }
+
+      form {
+        display: grid;
+        gap: 8px;
+      }
+
+      .row {
+        display: grid;
+        grid-template-columns: 1fr;
+        gap: 8px;
+      }
+
+      @media (min-width: 560px) {
+        .row.two {
+          grid-template-columns: 1fr 1fr;
+        }
+      }
+
+      input,
+      select,
+      button {
+        border-radius: 10px;
+        border: 1px solid #a6beb0;
+        background: #f9fdfa;
+        color: var(--ink);
+        padding: 8px 10px;
+        font-family: "IBM Plex Sans", sans-serif;
+      }
+
+      button {
+        cursor: pointer;
+      }
+
+      button:hover {
+        background: #edf5ef;
+      }
+
+      button.danger {
+        border-color: #d9a3a1;
+        background: #fff3f2;
+        color: #8c2320;
+      }
+
+      ul {
+        margin: 0;
+        padding: 0;
+        list-style: none;
+        display: grid;
+        gap: 6px;
+      }
+
+      li {
+        display: grid;
+        grid-template-columns: 1fr auto auto;
+        gap: 8px;
+        align-items: center;
+        border: 1px solid var(--line);
+        border-radius: 10px;
+        padding: 8px 10px;
+        background: #fbfffc;
+      }
+
+      li.active {
+        border-color: #8ab69a;
+        background: #f0f9f3;
+      }
+
+      .mono {
+        font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+        font-size: 12px;
+      }
+
+      pre {
+        margin: 0;
+        max-height: 220px;
+        overflow: auto;
+        white-space: pre-wrap;
+        word-break: break-word;
+        border-radius: 10px;
+        border: 1px solid var(--line);
+        background: #fbfffc;
+        padding: 10px;
+        font-family: "JetBrains Mono", "IBM Plex Mono", monospace;
+        font-size: 12px;
+      }
+
+      .foot {
+        margin-top: 10px;
+        color: var(--muted);
+        font-size: 12px;
+      }
+
+      .toast-wrap {
+        position: fixed;
+        top: 86px;
+        right: 16px;
+        z-index: 9999;
+        display: grid;
+        gap: 8px;
+        width: min(380px, calc(100vw - 24px));
+      }
+
+      .toast {
+        border-radius: 12px;
+        padding: 10px 12px;
+        border: 1px solid transparent;
+        box-shadow: 0 10px 24px #11182722;
+        animation: toast-in 180ms ease-out;
+        font-size: 13px;
+      }
+
+      .toast.ok {
+        background: #e7f8ee;
+        color: #10683b;
+        border-color: #9fdbb8;
+      }
+
+      .toast.err {
+        background: #fdeceb;
+        color: #8d211d;
+        border-color: #efb8b5;
+      }
+
+      @keyframes toast-in {
+        from {
+          opacity: 0;
+          transform: translateY(-6px);
+        }
+        to {
+          opacity: 1;
+          transform: translateY(0);
+        }
+      }
+
+      .top-controls {
+        position: fixed;
+        top: 14px;
+        right: 16px;
+        z-index: 10000;
+        display: flex;
+        gap: 8px;
+      }
+
+      .top-controls button,
+      .top-controls select {
+        border-radius: 10px;
+        border: 1px solid #8da797;
+        background: #f3faf5;
+        padding: 7px 10px;
+        font-size: 12px;
+        color: #1f3a2b;
+      }
+
+      .top-controls .lang-select {
+        min-width: 98px;
+      }
+
+      [data-theme="dark"] .top-controls button,
+      [data-theme="dark"] .top-controls select {
+        border-color: #4e6658;
+        background: #223128;
+        color: #dbe9de;
+      }
+
+      [data-theme="dark"] .hero,
+      [data-theme="dark"] .card,
+      [data-theme="dark"] li,
+      [data-theme="dark"] .note,
+      [data-theme="dark"] pre {
+        background: #16231d;
+        border-color: #3a4d40;
+        box-shadow: none;
+      }
+
+      [data-theme="dark"] input,
+      [data-theme="dark"] select,
+      [data-theme="dark"] button {
+        background: #24332a;
+        color: #e6f2e9;
+        border-color: #4a6254;
+      }
+
+      [data-theme="dark"] button:hover {
+        background: #2d3f33;
+      }
+
+      [data-theme="dark"] li.active {
+        border-color: #4f7a62;
+        background: #1b2f24;
+      }
+
+      [data-theme="dark"] button.danger {
+        background: #46282a;
+        border-color: #8e5256;
+        color: #ffd5d6;
+      }
+
+      [data-theme="dark"] .toast.ok {
+        background: #1c3528;
+        color: #aee9c8;
+        border-color: #377a58;
+      }
+
+      [data-theme="dark"] .toast.err {
+        background: #3f2324;
+        color: #ffc8c8;
+        border-color: #9d5155;
+      }
+    </style>
+  </head>
+  <body data-theme="light">
+    <div class="top-controls">
+      <select id="lang-select" class="lang-select">
+        <option value="zh">中文</option>
+        <option value="en">EN</option>
+      </select>
+      <button id="btn-theme">Night</button>
+    </div>
+    <div id="toast-wrap" class="toast-wrap" aria-live="polite"></div>
+    <div class="shell">
+      <section class="hero">
+        <h1 id="ui-title" class="title">iSCSI GUI / M3 Flow A</h1>
+        <p id="ui-subtitle" class="subtitle">当前页面可直接管理目标/存储后端/映射/ACL，并显示健康状态与会话。</p>
+      </section>
+
+      <section class="grid">
+        <article class="card health">
+          <div class="card-head">
+            <h2 id="title-health" class="card-title">System Health</h2>
+            <span id="health-chip" class="status-chip status-warn">loading</span>
+          </div>
+          <div class="metric" id="service-name">iscsi-agent</div>
+          <div class="muted">API endpoint: <span id="health-endpoint" class="mono">-</span></div>
+        </article>
+
+        <article class="card sessions">
+          <div class="card-head">
+            <h2 id="title-sessions" class="card-title">Sessions</h2>
+            <button id="btn-refresh-all">Refresh All</button>
+          </div>
+          <div class="metric" id="session-count">0</div>
+          <pre id="sessions-json">loading...</pre>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h2 id="title-current-target" class="card-title">当前目标</h2>
+          </div>
+          <div class="row two">
+            <select id="current-target"></select>
+            <button id="btn-refresh-dependent">Refresh Dependent Panels</button>
+          </div>
+          <div id="current-target-note" class="note">请选择当前目标作为后续操作上下文</div>
+        </article>
+
+        <article class="card targets">
+          <div class="card-head">
+            <h2 id="title-targets" class="card-title">目标</h2>
+            <button id="btn-refresh-targets">Refresh</button>
+          </div>
+
+          <form id="target-create-form">
+            <div class="row">
+              <input id="target-iqn" placeholder="iqn.2026-03.local.zima:demo01" required />
+            </div>
+            <div class="actions">
+              <button id="btn-create-target" type="submit">Create Target</button>
+            </div>
+          </form>
+
+          <div class="stack">
+            <div id="label-existing-targets" class="muted">Existing targets</div>
+            <ul id="target-list"></ul>
+            <div id="target-note" class="note">ready</div>
+          </div>
+        </article>
+
+        <article class="card backstores">
+          <div class="card-head">
+            <h2 id="title-backstores" class="card-title">存储后端</h2>
+            <button id="btn-refresh-backstores">Refresh</button>
+          </div>
+
+          <form id="backstore-create-form">
+            <div class="row two">
+              <input id="backstore-name" placeholder="bs_file_demo" required />
+              <select id="backstore-type">
+                <option value="fileio">fileio</option>
+                <option value="block">block</option>
+              </select>
+            </div>
+            <div class="row">
+              <input id="backstore-path" placeholder="/DATA/iscsi-gui/bs_file_demo.img or /dev/sdb" required />
+            </div>
+            <div class="row">
+              <input id="backstore-size" placeholder="2G (fileio required)" />
+            </div>
+            <div class="actions">
+              <button id="btn-create-backstore" type="submit">Create Backstore</button>
+            </div>
+          </form>
+
+          <div class="stack">
+            <div id="label-existing-backstores" class="muted">Existing backstores</div>
+            <ul id="backstore-list"></ul>
+            <div id="backstore-note" class="note">ready</div>
+          </div>
+        </article>
+
+        <article class="card mappings">
+          <div class="card-head">
+            <h2 id="title-mappings" class="card-title">Mappings (LUN)</h2>
+            <button id="btn-refresh-mappings">Refresh</button>
+          </div>
+
+          <form id="mapping-create-form">
+            <div class="row two">
+              <input id="mapping-target-view" readonly />
+              <select id="mapping-backstore" required></select>
+            </div>
+            <div class="row">
+              <input id="mapping-lun" type="number" min="0" max="65535" placeholder="0 (optional, default auto)" />
+            </div>
+            <div class="actions">
+              <button id="btn-create-mapping" type="submit">Create Mapping</button>
+            </div>
+          </form>
+
+          <div class="stack">
+            <div id="label-existing-mappings" class="muted">Mappings for current target</div>
+            <ul id="mapping-list"></ul>
+            <div id="mapping-note" class="note">ready</div>
+          </div>
+        </article>
+
+        <article class="card acls">
+          <div class="card-head">
+            <h2 id="title-acls" class="card-title">ACLs</h2>
+            <button id="btn-refresh-acls">Refresh</button>
+          </div>
+
+          <form id="acl-create-form">
+            <div class="row two">
+              <input id="acl-target-view" readonly />
+              <input id="acl-initiator" placeholder="iqn.2016-04.com.open-iscsi:xxxx" required />
+            </div>
+            <div class="actions">
+              <button id="btn-create-acl" type="submit">Create ACL</button>
+            </div>
+          </form>
+
+          <div class="stack">
+            <div id="label-existing-acls" class="muted">ACLs for current target</div>
+            <ul id="acl-list"></ul>
+            <div id="acl-note" class="note">ready</div>
+          </div>
+        </article>
+
+        <article class="card portals">
+          <div class="card-head">
+            <h2 id="title-portals" class="card-title">Portals</h2>
+            <button id="btn-refresh-portals">Refresh</button>
+          </div>
+
+          <form id="portal-create-form">
+            <div class="row two">
+              <input id="portal-target-view" readonly />
+              <input id="portal-ip" placeholder="0.0.0.0" required />
+            </div>
+            <div class="row">
+              <input id="portal-port" type="number" min="1" max="65535" placeholder="3260 (default)" />
+            </div>
+            <div class="actions">
+              <button id="btn-create-portal" type="submit">Create Portal</button>
+            </div>
+          </form>
+
+          <div class="stack">
+            <div id="label-existing-portals" class="muted">Portals for current target</div>
+            <ul id="portal-list"></ul>
+            <div id="portal-note" class="note">ready</div>
+          </div>
+        </article>
+
+        <article class="card chap">
+          <div class="card-head">
+            <h2 id="title-chap" class="card-title">CHAP Auth</h2>
+            <button id="btn-refresh-chap">Refresh</button>
+          </div>
+
+          <form id="chap-form">
+            <div class="row">
+              <input id="chap-target-view" readonly />
+            </div>
+            <div class="row two">
+              <label class="mono" for="chap-enabled">enabled</label>
+              <input id="chap-enabled" type="checkbox" />
+            </div>
+            <div class="row two">
+              <input id="chap-userid" placeholder="demo-user" autocomplete="off" />
+              <input id="chap-password" type="password" placeholder="demo-pass-123" autocomplete="new-password" />
+            </div>
+            <div class="actions">
+              <button id="btn-save-chap" type="submit">Save CHAP</button>
+            </div>
+          </form>
+          <div id="chap-security-note" class="muted">Password is never returned by API or shown in logs.</div>
+
+          <div class="stack">
+            <div id="label-chap-state" class="muted">CHAP state for current target</div>
+            <pre id="chap-json">ready</pre>
+            <div id="chap-note" class="note">ready</div>
+          </div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h2 id="title-readiness" class="card-title">Target Readiness</h2>
+          </div>
+          <div id="label-readiness-sub" class="muted">Login prerequisites for current target: <span id="readiness-target" class="mono">-</span></div>
+          <ul id="readiness-list" class="dep-list"></ul>
+          <div id="readiness-note" class="note">select target to evaluate dependencies</div>
+        </article>
+
+        <article class="card">
+          <div class="card-head">
+            <h2 id="title-oplog" class="card-title">Operation Log</h2>
+            <button id="btn-refresh-logs">Refresh</button>
+          </div>
+          <pre id="event-log">ready</pre>
+          <div id="log-note" class="note">ready</div>
+        </article>
+      </section>
+
+      <div id="label-foot" class="foot">API: <code>/api/v1/*</code> (fallback to <code>:18081</code> gateway when needed)</div>
+    </div>
+
+    <script>
+      function apiCandidates() {
+        const host = window.location.hostname;
+        const protocol = window.location.protocol;
+        return ["", `${protocol}//${host}:18081`];
+      }
+
+      const I18N = {
+        zh: {
+          ui_title: "iSCSI GUI / M3 Flow A",
+          ui_subtitle: "当前页面可直接管理目标/存储后端/映射/ACL，并显示健康状态与会话。",
+          title_health: "系统健康",
+          title_sessions: "会话",
+          title_current_target: "当前目标",
+          title_targets: "目标",
+          title_backstores: "存储后端",
+          title_mappings: "映射 (LUN)",
+          title_acls: "ACL 访问控制",
+          title_portals: "入口 (Portals)",
+          title_chap: "CHAP 认证",
+          title_readiness: "目标就绪检查",
+          title_oplog: "操作日志",
+          btn_refresh_all: "全部刷新",
+          btn_refresh: "刷新",
+          btn_refresh_logs: "刷新日志",
+          btn_refresh_dependent: "刷新依赖面板",
+          btn_create_target: "创建目标",
+          btn_create_backstore: "创建存储后端",
+          btn_create_mapping: "创建映射",
+          btn_create_acl: "创建 ACL",
+          btn_create_portal: "创建入口",
+          btn_save_chap: "保存 CHAP",
+          btn_set_current: "设为当前",
+          btn_current: "当前目标",
+          btn_delete: "删除",
+          act_create: "创建",
+          act_delete: "删除",
+          act_refresh: "刷新",
+          label_existing_targets: "已存在目标",
+          label_existing_backstores: "已存在存储后端",
+          label_existing_mappings: "当前目标的映射",
+          label_existing_acls: "当前目标的 ACL",
+          label_existing_portals: "当前目标的入口",
+          label_chap_state: "当前目标的 CHAP 状态",
+          label_readiness_sub: "当前目标登录前提：",
+          label_log_loaded: "已加载 {n} 条审计日志",
+          label_foot: "API: /api/v1/*（同源失败时回退到 :18081 gateway）",
+          note_select_current: "请选择当前目标作为后续操作上下文",
+          no_targets: "无目标",
+          no_backstores: "无存储后端",
+          no_mappings: "无映射",
+          no_acls: "无 ACL",
+          no_portals: "无入口",
+          no_current_target: "(未设置当前目标)",
+          ph_target_iqn: "iqn.2026-03.local.zima:demo01",
+          ph_backstore_name: "bs_file_demo",
+          ph_backstore_path: "/DATA/iscsi-gui/bs_file_demo.img 或 /dev/sdb",
+          ph_backstore_size_fileio: "2G（fileio 必填）",
+          ph_backstore_size_block: "block 模式可留空",
+          ph_mapping_lun: "0（可选，不填自动分配）",
+          ph_acl_initiator: "iqn.2016-04.com.open-iscsi:xxxx",
+          ph_portal_ip: "0.0.0.0",
+          ph_portal_port: "3260（默认）",
+          ph_chap_userid: "demo-user",
+          ph_chap_password: "demo-pass-123",
+          chap_enabled_label: "启用",
+          chap_state_on: "CHAP 已启用",
+          chap_state_off: "CHAP 已关闭",
+          chap_state_incomplete: "CHAP 已启用，但凭据不完整",
+          chap_security_note: "安全提示：密码不会通过 API 回显，也不会写入审计日志。",
+          status_pass: "通过",
+          status_warn: "警告",
+          status_info: "信息",
+          dep_target: "Target",
+          dep_mapping: "Mapping",
+          dep_acl: "ACL",
+          dep_health: "健康",
+          dep_portal: "入口",
+          dep_chap: "CHAP",
+          dep_target_missing: "未选择或目标不存在",
+          dep_no_mapping: "未配置映射",
+          dep_no_acl: "未授权 Initiator",
+          dep_no_portal: "未配置入口",
+          dep_chap_unknown: "CHAP 状态未知（请刷新）",
+          dep_chap_disabled: "CHAP 未启用（仅 ACL 限制）",
+          dep_chap_ready: "CHAP 已启用且凭据完整",
+          dep_chap_missing_user: "CHAP 已启用但缺少 userid",
+          dep_chap_missing_password: "CHAP 已启用但缺少 password",
+          dep_chap_missing_both: "CHAP 已启用但 userid/password 均缺失",
+          dep_mapping_count: "{n} 个映射",
+          dep_acl_count: "{n} 条 ACL",
+          dep_portal_count: "{n} 个入口",
+          dep_health_fmt: "agent 健康：{status}",
+          dep_ready: "可进行 initiator 登录",
+          dep_not_ready: "尚未就绪：请先完成所有警告项",
+          loaded_targets: "已加载 {n} 个目标（{endpoint}）",
+          loaded_backstores: "已加载 {n} 个存储后端（{endpoint}）",
+          loaded_mappings: "已加载 {n} 个映射（target={target}）",
+          loaded_acls: "已加载 {n} 条 ACL（target={target}）",
+          loaded_portals: "已加载 {n} 个入口（target={target}）",
+          op_success: "{action}成功：{detail}",
+          op_success_plain: "{action}成功",
+          op_fail: "{action}失败：{reason}",
+          err_request_failed: "请求失败",
+          err_api_unreachable: "接口不可达，请检查 iscsi-web-gateway 与网络连通性",
+          err_iqn_invalid: "IQN 格式错误，请使用 iqn.YYYY-MM.reversed.domain:name",
+          err_target_backend_unavailable: "target 后端不可用，请检查 targetcli 与 agent 服务",
+          err_mapping_backend_unavailable: "mapping 后端不可用，请检查 targetcli 与 agent 服务",
+          err_acl_backend_unavailable: "ACL 后端不可用，请检查 targetcli 与 agent 服务",
+          err_portal_backend_unavailable: "portal 后端不可用，请检查 targetcli 与 agent 服务",
+          err_target_not_found: "目标不存在，请先创建 Target",
+          err_portal_ip_invalid: "Portal IP 格式错误",
+          err_portal_port_invalid: "Portal 端口错误，应为 1..65535",
+          err_chap_backend_unavailable: "CHAP 后端不可用，请检查 targetcli 与 agent 服务",
+          err_chap_need_fields: "启用 CHAP 时，userid 和 password 不能为空",
+          err_audit_backend_unavailable: "审计服务不可用，请检查 agent 服务",
+          err_session_backend_unavailable: "session 后端不可用，请检查 targetcli 与 agent 服务",
+          err_status: "请求失败（status={status}）",
+          err_need_target_backstore: "创建映射失败：请先设置当前目标并选择存储后端",
+          err_need_acl_fields: "创建 ACL 失败：当前目标与 Initiator IQN 不能为空",
+          err_need_portal_fields: "创建入口失败：当前目标与 IP 不能为空",
+          theme_day: "Day",
+          theme_night: "Night"
+        },
+        en: {
+          ui_title: "iSCSI GUI / M3 Flow A",
+          ui_subtitle: "Manage Targets/Backstores/Mappings/ACLs with live Health and Sessions.",
+          title_health: "System Health",
+          title_sessions: "Sessions",
+          title_current_target: "Current Target",
+          title_targets: "Targets",
+          title_backstores: "Backstores",
+          title_mappings: "Mappings (LUN)",
+          title_acls: "ACLs",
+          title_portals: "Portals",
+          title_chap: "CHAP Auth",
+          title_readiness: "Target Readiness",
+          title_oplog: "Operation Log",
+          btn_refresh_all: "Refresh All",
+          btn_refresh: "Refresh",
+          btn_refresh_logs: "Refresh Logs",
+          btn_refresh_dependent: "Refresh Dependent Panels",
+          btn_create_target: "Create Target",
+          btn_create_backstore: "Create Backstore",
+          btn_create_mapping: "Create Mapping",
+          btn_create_acl: "Create ACL",
+          btn_create_portal: "Create Portal",
+          btn_save_chap: "Save CHAP",
+          btn_set_current: "Set Current",
+          btn_current: "Current",
+          btn_delete: "Delete",
+          act_create: "Create",
+          act_delete: "Delete",
+          act_refresh: "Refresh",
+          label_existing_targets: "Existing targets",
+          label_existing_backstores: "Existing backstores",
+          label_existing_mappings: "Mappings for current target",
+          label_existing_acls: "ACLs for current target",
+          label_existing_portals: "Portals for current target",
+          label_chap_state: "CHAP state for current target",
+          label_readiness_sub: "Login prerequisites for current target:",
+          label_log_loaded: "loaded {n} audit log(s)",
+          label_foot: "API: /api/v1/* (fallback to :18081 gateway when needed)",
+          note_select_current: "Select a Current Target to drive dependent operations",
+          no_targets: "no targets",
+          no_backstores: "no backstores",
+          no_mappings: "no mappings",
+          no_acls: "no acls",
+          no_portals: "no portals",
+          no_current_target: "(no current target)",
+          ph_target_iqn: "iqn.2026-03.local.zima:demo01",
+          ph_backstore_name: "bs_file_demo",
+          ph_backstore_path: "/DATA/iscsi-gui/bs_file_demo.img or /dev/sdb",
+          ph_backstore_size_fileio: "2G (fileio required)",
+          ph_backstore_size_block: "block mode: leave empty",
+          ph_mapping_lun: "0 (optional, auto if empty)",
+          ph_acl_initiator: "iqn.2016-04.com.open-iscsi:xxxx",
+          ph_portal_ip: "0.0.0.0",
+          ph_portal_port: "3260 (default)",
+          ph_chap_userid: "demo-user",
+          ph_chap_password: "demo-pass-123",
+          chap_enabled_label: "enabled",
+          chap_state_on: "CHAP is enabled",
+          chap_state_off: "CHAP is disabled",
+          chap_state_incomplete: "CHAP is enabled but credentials are incomplete",
+          chap_security_note: "Security: password is never returned by API and never written to audit logs.",
+          status_pass: "pass",
+          status_warn: "warn",
+          status_info: "info",
+          dep_target: "Target",
+          dep_mapping: "Mapping",
+          dep_acl: "ACL",
+          dep_health: "Health",
+          dep_portal: "Portal",
+          dep_chap: "CHAP",
+          dep_target_missing: "target missing/not selected",
+          dep_no_mapping: "no LUN mapping",
+          dep_no_acl: "initiator not authorized",
+          dep_no_portal: "no portal configured",
+          dep_chap_unknown: "CHAP state unknown (refresh required)",
+          dep_chap_disabled: "CHAP disabled (ACL-only restriction)",
+          dep_chap_ready: "CHAP enabled with complete credentials",
+          dep_chap_missing_user: "CHAP enabled but userid is missing",
+          dep_chap_missing_password: "CHAP enabled but password is missing",
+          dep_chap_missing_both: "CHAP enabled but userid/password are missing",
+          dep_mapping_count: "{n} mapping(s)",
+          dep_acl_count: "{n} ACL(s)",
+          dep_portal_count: "{n} portal(s)",
+          dep_health_fmt: "agent health: {status}",
+          dep_ready: "ready for initiator login",
+          dep_not_ready: "not ready: complete warning items first",
+          loaded_targets: "loaded {n} target(s) from {endpoint}",
+          loaded_backstores: "loaded {n} backstore(s) from {endpoint}",
+          loaded_mappings: "loaded {n} mapping(s) for target={target}",
+          loaded_acls: "loaded {n} ACL(s) for target={target}",
+          loaded_portals: "loaded {n} portal(s) for target={target}",
+          op_success: "{action} succeeded: {detail}",
+          op_success_plain: "{action} succeeded",
+          op_fail: "{action} failed: {reason}",
+          err_request_failed: "request failed",
+          err_api_unreachable: "API unreachable. Check iscsi-web-gateway and network connectivity.",
+          err_iqn_invalid: "invalid IQN format. expected: iqn.YYYY-MM.reversed.domain:name",
+          err_target_backend_unavailable: "target backend unavailable. Check targetcli and agent service.",
+          err_mapping_backend_unavailable: "mapping backend unavailable. Check targetcli and agent service.",
+          err_acl_backend_unavailable: "ACL backend unavailable. Check targetcli and agent service.",
+          err_portal_backend_unavailable: "portal backend unavailable. Check targetcli and agent service.",
+          err_target_not_found: "target not found. Create target first.",
+          err_portal_ip_invalid: "invalid portal IP",
+          err_portal_port_invalid: "invalid portal port. expected 1..65535",
+          err_chap_backend_unavailable: "chap backend unavailable. Check targetcli and agent service.",
+          err_chap_need_fields: "When CHAP is enabled, userid and password are required",
+          err_audit_backend_unavailable: "audit backend unavailable. Check agent service.",
+          err_session_backend_unavailable: "session backend unavailable. Check targetcli and agent service.",
+          err_status: "request failed (status={status})",
+          err_need_target_backstore: "Create Mapping failed: set Current Target and choose Backstore first",
+          err_need_acl_fields: "Create ACL failed: Current Target and Initiator IQN are required",
+          err_need_portal_fields: "Create Portal failed: Current Target and IP are required",
+          theme_day: "Day",
+          theme_night: "Night"
+        }
+      };
+
+      let stateLang = "zh";
+      let stateTheme = "light";
+
+      function tr(key, vars = {}) {
+        const dict = I18N[stateLang] || I18N.en;
+        const fallback = I18N.en[key] || key;
+        let out = dict[key] || fallback;
+        for (const [k, v] of Object.entries(vars)) {
+          out = out.replaceAll(`{${k}}`, String(v));
+        }
+        return out;
+      }
+
+      function setText(id, key, vars = {}) {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = tr(key, vars);
+        }
+      }
+
+      function actionLabel(actionKey, titleKey) {
+        const action = tr(actionKey);
+        const title = tr(titleKey);
+        return stateLang === "zh" ? `${action}${title}` : `${action} ${title}`;
+      }
+
+      function applyTheme() {
+        document.body.setAttribute("data-theme", stateTheme);
+        const themeBtn = document.getElementById("btn-theme");
+        if (themeBtn) {
+          themeBtn.textContent = stateTheme === "light" ? tr("theme_night") : tr("theme_day");
+        }
+      }
+
+      function applyI18N() {
+        setText("ui-title", "ui_title");
+        setText("ui-subtitle", "ui_subtitle");
+        setText("title-health", "title_health");
+        setText("title-sessions", "title_sessions");
+        setText("title-current-target", "title_current_target");
+        setText("title-targets", "title_targets");
+        setText("title-backstores", "title_backstores");
+        setText("title-mappings", "title_mappings");
+        setText("title-acls", "title_acls");
+        setText("title-portals", "title_portals");
+        setText("title-chap", "title_chap");
+        setText("title-readiness", "title_readiness");
+        setText("title-oplog", "title_oplog");
+        setText("btn-refresh-all", "btn_refresh_all");
+        setText("btn-refresh-targets", "btn_refresh");
+        setText("btn-refresh-backstores", "btn_refresh");
+        setText("btn-refresh-mappings", "btn_refresh");
+        setText("btn-refresh-acls", "btn_refresh");
+        setText("btn-refresh-portals", "btn_refresh");
+        setText("btn-refresh-chap", "btn_refresh");
+        setText("btn-refresh-logs", "btn_refresh_logs");
+        setText("btn-refresh-dependent", "btn_refresh_dependent");
+        setText("btn-create-target", "btn_create_target");
+        setText("btn-create-backstore", "btn_create_backstore");
+        setText("btn-create-mapping", "btn_create_mapping");
+        setText("btn-create-acl", "btn_create_acl");
+        setText("btn-create-portal", "btn_create_portal");
+        setText("btn-save-chap", "btn_save_chap");
+        setText("label-existing-targets", "label_existing_targets");
+        setText("label-existing-backstores", "label_existing_backstores");
+        setText("label-existing-mappings", "label_existing_mappings");
+        setText("label-existing-acls", "label_existing_acls");
+        setText("label-existing-portals", "label_existing_portals");
+        setText("label-chap-state", "label_chap_state");
+        setText("chap-security-note", "chap_security_note");
+        const rsub = document.getElementById("label-readiness-sub");
+        if (rsub) {
+          rsub.innerHTML = `${tr("label_readiness_sub")} <span id="readiness-target" class="mono">${
+            stateCurrentTarget || "-"
+          }</span>`;
+        }
+        const foot = document.getElementById("label-foot");
+        if (foot) {
+          foot.textContent = tr("label_foot");
+        }
+
+        const langSelect = document.getElementById("lang-select");
+        if (langSelect) {
+          langSelect.value = stateLang;
+        }
+        applyTheme();
+
+        const targetIqn = document.getElementById("target-iqn");
+        const bsName = document.getElementById("backstore-name");
+        const bsPath = document.getElementById("backstore-path");
+        const bsSize = document.getElementById("backstore-size");
+        const mapLun = document.getElementById("mapping-lun");
+        const aclInit = document.getElementById("acl-initiator");
+        const portalIP = document.getElementById("portal-ip");
+        const portalPort = document.getElementById("portal-port");
+        const chapUser = document.getElementById("chap-userid");
+        const chapPass = document.getElementById("chap-password");
+        const chapEnabledLabel = document.querySelector('label[for="chap-enabled"]');
+        if (targetIqn) targetIqn.placeholder = tr("ph_target_iqn");
+        if (bsName) bsName.placeholder = tr("ph_backstore_name");
+        if (bsPath) bsPath.placeholder = tr("ph_backstore_path");
+        if (bsSize) bsSize.placeholder = tr("ph_backstore_size_fileio");
+        if (mapLun) mapLun.placeholder = tr("ph_mapping_lun");
+        if (aclInit) aclInit.placeholder = tr("ph_acl_initiator");
+        if (portalIP) portalIP.placeholder = tr("ph_portal_ip");
+        if (portalPort) portalPort.placeholder = tr("ph_portal_port");
+        if (chapUser) chapUser.placeholder = tr("ph_chap_userid");
+        if (chapPass) chapPass.placeholder = tr("ph_chap_password");
+        if (chapEnabledLabel) chapEnabledLabel.textContent = tr("chap_enabled_label");
+
+        refreshSelects();
+        renderReadiness();
+      }
+
+      function initPreferences() {
+        try {
+          const lang = localStorage.getItem("iscsi_gui_lang");
+          const theme = localStorage.getItem("iscsi_gui_theme");
+          if (lang === "zh" || lang === "en") {
+            stateLang = lang;
+          } else {
+            stateLang = (navigator.language || "").toLowerCase().startsWith("zh") ? "zh" : "en";
+          }
+          if (theme === "light" || theme === "dark") {
+            stateTheme = theme;
+          }
+        } catch {}
+        applyTheme();
+      }
+
+      async function callAPI(path, options = {}) {
+        const tried = [];
+        for (const base of apiCandidates()) {
+          const endpoint = `${base}${path}`;
+          try {
+            const res = await fetch(endpoint, options);
+            const text = await res.text();
+            let data;
+            try {
+              data = text ? JSON.parse(text) : {};
+            } catch {
+              data = { raw: text };
+            }
+            tried.push({ endpoint, status: res.status, ok: res.ok });
+            if (res.ok) {
+              return { ok: true, status: res.status, endpoint, data, tried };
+            }
+          } catch (err) {
+            tried.push({ endpoint, error: String(err) });
+          }
+        }
+
+        const last = tried.length ? tried[tried.length - 1] : {};
+        return {
+          ok: false,
+          status: last.status || 0,
+          endpoint: last.endpoint || path,
+          data: { error: "all api candidates failed", path, tried },
+          tried
+        };
+      }
+
+      function toLog(obj) {
+        return JSON.stringify(obj, null, 2);
+      }
+
+      function appendLog(title, obj) {
+        const el = document.getElementById("event-log");
+        const head = `[${new Date().toLocaleTimeString()}] ${title}`;
+        const body = typeof obj === "string" ? obj : toLog(obj);
+        el.textContent = `${head}\n${body}\n\n${el.textContent}`.slice(0, 8000);
+      }
+
+      function formatAuditLogs(items) {
+        if (!items || !items.length) {
+          return "[]";
+        }
+        const rows = items.map((it) => ({
+          ts: it.timestamp || "",
+          action: it.action || "",
+          resource: it.resource || "",
+          target_iqn: it.target_iqn || "",
+          result: it.result || "",
+          changed: typeof it.changed === "boolean" ? it.changed : null,
+          actor: it.actor || "",
+          message: it.message || ""
+        }));
+        return toLog(rows);
+      }
+
+      function apiErrorMessage(resp) {
+        if (!resp || !resp.data) {
+          return tr("err_request_failed");
+        }
+
+        const raw = String((resp.data && resp.data.error) || "").toLowerCase();
+        const details = String((resp.data && resp.data.details) || "");
+        if (raw.includes("all api candidates failed")) {
+          return tr("err_api_unreachable");
+        }
+        if (raw.includes("invalid iqn") || raw.includes("invalid target_iqn")) {
+          return tr("err_iqn_invalid");
+        }
+        if (raw.includes("target backend unavailable")) {
+          return tr("err_target_backend_unavailable");
+        }
+        if (raw.includes("mapping backend unavailable")) {
+          return tr("err_mapping_backend_unavailable");
+        }
+        if (raw.includes("acl backend unavailable")) {
+          return tr("err_acl_backend_unavailable");
+        }
+        if (raw.includes("portal backend unavailable")) {
+          return tr("err_portal_backend_unavailable");
+        }
+        if (raw.includes("chap backend unavailable")) {
+          return tr("err_chap_backend_unavailable");
+        }
+        if (raw.includes("target not found")) {
+          return tr("err_target_not_found");
+        }
+        if (raw.includes("invalid ip")) {
+          return tr("err_portal_ip_invalid");
+        }
+        if (raw.includes("invalid port")) {
+          return tr("err_portal_port_invalid");
+        }
+        if (raw.includes("session backend unavailable")) {
+          return tr("err_session_backend_unavailable");
+        }
+        if (raw.includes("audit service unavailable")) {
+          return tr("err_audit_backend_unavailable");
+        }
+
+        if (resp.data.error) {
+          if (details) {
+            return `${resp.data.error}: ${details}`;
+          }
+          return String(resp.data.error);
+        }
+        return tr("err_status", { status: resp.status || 0 });
+      }
+
+      function opSuccess(action, detail) {
+        return detail ? tr("op_success", { action, detail }) : tr("op_success_plain", { action });
+      }
+
+      function opFail(action, resp) {
+        return tr("op_fail", { action, reason: apiErrorMessage(resp) });
+      }
+
+      function setNote(id, text) {
+        const el = document.getElementById(id);
+        if (el) {
+          el.textContent = text;
+        }
+      }
+
+      function showToast(kind, text) {
+        const wrap = document.getElementById("toast-wrap");
+        const el = document.createElement("div");
+        el.className = `toast ${kind === "ok" ? "ok" : "err"}`;
+        el.textContent = text;
+        wrap.appendChild(el);
+        setTimeout(() => {
+          el.remove();
+        }, 2800);
+      }
+
+      let stateTargets = [];
+      let stateBackstores = [];
+      let stateMappings = [];
+      let stateACLs = [];
+      let statePortals = [];
+      let stateCHAP = null;
+      let stateHealthStatus = "error";
+      let stateCurrentTarget = "";
+
+      function normalizeTargets(items) {
+        return (items || [])
+          .map((item) => (typeof item === "string" ? item : item && item.iqn))
+          .filter(Boolean);
+      }
+
+      function normalizeBackstores(items) {
+        return (items || [])
+          .map((item) => ({
+            name: item && item.name ? item.name : "",
+            type: item && item.type ? item.type : ""
+          }))
+          .filter((x) => x.name && x.type);
+      }
+
+      function fillSelect(selectId, options, placeholder) {
+        const sel = document.getElementById(selectId);
+        const old = sel.value;
+        sel.innerHTML = "";
+
+        if (!options.length) {
+          const op = document.createElement("option");
+          op.value = "";
+          op.textContent = placeholder;
+          sel.appendChild(op);
+          sel.value = "";
+          return;
+        }
+
+        for (const opt of options) {
+          const op = document.createElement("option");
+          op.value = opt.value;
+          op.textContent = opt.label;
+          sel.appendChild(op);
+        }
+        sel.value = options.some((x) => x.value === old) ? old : options[0].value;
+      }
+
+      function refreshSelects() {
+        fillSelect(
+          "current-target",
+          stateTargets.map((iqn) => ({ value: iqn, label: iqn })),
+          tr("no_targets")
+        );
+        fillSelect(
+          "mapping-backstore",
+          stateBackstores.map((b) => ({ value: `${b.type}/${b.name}`, label: `${b.type}/${b.name}` })),
+          tr("no_backstores")
+        );
+        const sel = document.getElementById("current-target");
+        stateCurrentTarget = sel.value || "";
+        document.getElementById("mapping-target-view").value = stateCurrentTarget || tr("no_current_target");
+        document.getElementById("acl-target-view").value = stateCurrentTarget || tr("no_current_target");
+        document.getElementById("portal-target-view").value = stateCurrentTarget || tr("no_current_target");
+        document.getElementById("chap-target-view").value = stateCurrentTarget || tr("no_current_target");
+        document.getElementById("readiness-target").textContent = stateCurrentTarget || "-";
+        document.getElementById("current-target-note").textContent = stateCurrentTarget
+          ? `${tr("title_current_target")}: ${stateCurrentTarget}`
+          : tr("note_select_current");
+      }
+
+      function depRow(name, status, detail) {
+        const klass = status === "pass" ? "dep-pass" : status === "warn" ? "dep-warn" : "dep-info";
+        const statusText = status === "pass" ? tr("status_pass") : status === "warn" ? tr("status_warn") : tr("status_info");
+        return `<li class="dep-row"><span>${name}</span><span class="dep-state ${klass}">${statusText}</span><span>${detail}</span></li>`;
+      }
+
+      function renderReadiness() {
+        const targetIQN = stateCurrentTarget || "";
+        const hasTarget = !!targetIQN && stateTargets.includes(targetIQN);
+        const hasMappings = stateMappings.length > 0;
+        const hasACLs = stateACLs.length > 0;
+        const hasPortals = statePortals.length > 0;
+        const healthGood = stateHealthStatus === "ok" || stateHealthStatus === "degraded";
+        const chapKnown = !!stateCHAP;
+
+        let chapStatus = "warn";
+        let chapDetail = tr("dep_chap_unknown");
+        let chapReady = false;
+        if (!hasTarget) {
+          chapStatus = "info";
+          chapDetail = tr("dep_target_missing");
+        } else if (chapKnown) {
+          const enabled = !!stateCHAP.enabled;
+          const hasUser = !!String(stateCHAP.userid || "").trim();
+          const hasPass = !!stateCHAP.password_set;
+          if (!enabled) {
+            chapStatus = "info";
+            chapDetail = tr("dep_chap_disabled");
+            chapReady = true;
+          } else if (hasUser && hasPass) {
+            chapStatus = "pass";
+            chapDetail = tr("dep_chap_ready");
+            chapReady = true;
+          } else if (!hasUser && !hasPass) {
+            chapStatus = "warn";
+            chapDetail = tr("dep_chap_missing_both");
+          } else if (!hasUser) {
+            chapStatus = "warn";
+            chapDetail = tr("dep_chap_missing_user");
+          } else {
+            chapStatus = "warn";
+            chapDetail = tr("dep_chap_missing_password");
+          }
+        }
+
+        const rows = [
+          depRow(tr("dep_target"), hasTarget ? "pass" : "warn", hasTarget ? targetIQN : tr("dep_target_missing")),
+          depRow(
+            tr("dep_mapping"),
+            hasMappings ? "pass" : "warn",
+            hasMappings ? tr("dep_mapping_count", { n: stateMappings.length }) : tr("dep_no_mapping")
+          ),
+          depRow(
+            tr("dep_acl"),
+            hasACLs ? "pass" : "warn",
+            hasACLs ? tr("dep_acl_count", { n: stateACLs.length }) : tr("dep_no_acl")
+          ),
+          depRow(tr("dep_health"), healthGood ? "pass" : "warn", tr("dep_health_fmt", { status: stateHealthStatus })),
+          depRow(
+            tr("dep_portal"),
+            hasPortals ? "pass" : "warn",
+            hasPortals ? tr("dep_portal_count", { n: statePortals.length }) : tr("dep_no_portal")
+          ),
+          depRow(tr("dep_chap"), chapStatus, chapDetail)
+        ];
+        document.getElementById("readiness-list").innerHTML = rows.join("");
+
+        const ready = hasTarget && hasMappings && hasACLs && hasPortals && healthGood && chapReady;
+        document.getElementById("readiness-note").textContent = ready
+          ? tr("dep_ready")
+          : tr("dep_not_ready");
+      }
+
+      function setHealthChip(status) {
+        const chip = document.getElementById("health-chip");
+        chip.className = "status-chip";
+        if (status === "ok") {
+          chip.classList.add("status-ok");
+        } else if (status === "degraded") {
+          chip.classList.add("status-warn");
+        } else {
+          chip.classList.add("status-err");
+        }
+        chip.textContent = status || "error";
+      }
+
+      async function refreshHealthAndSessions() {
+        const [health, sessions] = await Promise.all([
+          callAPI("/api/v1/system/health"),
+          callAPI("/api/v1/sessions")
+        ]);
+
+        const hStatus = health.data && health.data.status ? health.data.status : "error";
+        stateHealthStatus = hStatus;
+        setHealthChip(hStatus);
+        document.getElementById("service-name").textContent =
+          (health.data && health.data.service) || "iscsi-agent";
+        document.getElementById("health-endpoint").textContent = health.endpoint;
+
+        const list = sessions.data && Array.isArray(sessions.data.sessions) ? sessions.data.sessions : [];
+        document.getElementById("session-count").textContent = String(list.length);
+        document.getElementById("sessions-json").textContent = toLog({
+          endpoint: sessions.endpoint,
+          payload: sessions.data
+        });
+        if (!health.ok) {
+          appendLog(opFail(actionLabel("act_refresh", "title_health"), health), health);
+        }
+        renderReadiness();
+      }
+
+      async function refreshAuditLogs() {
+        const targetFilter = stateCurrentTarget
+          ? `&target_iqn=${encodeURIComponent(stateCurrentTarget)}`
+          : "";
+        const resp = await callAPI(`/api/v1/audit/logs?limit=120${targetFilter}`);
+        if (!resp.ok) {
+          setNote("log-note", opFail(actionLabel("act_refresh", "title_oplog"), resp));
+          showToast("err", opFail(actionLabel("act_refresh", "title_oplog"), resp));
+          appendLog(opFail(actionLabel("act_refresh", "title_oplog"), resp), resp);
+          return;
+        }
+        const logs = resp.data && Array.isArray(resp.data.logs) ? resp.data.logs : [];
+        document.getElementById("event-log").textContent = formatAuditLogs(logs);
+        setNote("log-note", tr("label_log_loaded", { n: logs.length }));
+      }
+
+      function renderTargets(items) {
+        const root = document.getElementById("target-list");
+        root.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.textContent = tr("no_targets");
+          root.appendChild(li);
+          return;
+        }
+
+        for (const item of items) {
+          const iqn = typeof item === "string" ? item : item && item.iqn;
+          const li = document.createElement("li");
+          if (iqn && iqn === stateCurrentTarget) {
+            li.classList.add("active");
+          }
+          const txt = document.createElement("span");
+          txt.className = "mono";
+          txt.textContent = iqn || "(unknown)";
+
+          const setCurrent = document.createElement("button");
+          setCurrent.textContent = iqn === stateCurrentTarget ? tr("btn_current") : tr("btn_set_current");
+          setCurrent.addEventListener("click", async () => {
+            stateCurrentTarget = iqn || "";
+            const sel = document.getElementById("current-target");
+            sel.value = stateCurrentTarget;
+            refreshSelects();
+            showToast("ok", `${tr("title_current_target")} -> ${stateCurrentTarget}`);
+            await Promise.all([refreshMappings(), refreshACLs(), refreshPortals(), refreshCHAP()]);
+            await refreshAuditLogs();
+          });
+
+          const del = document.createElement("button");
+          del.className = "danger";
+          del.textContent = tr("btn_delete");
+          del.addEventListener("click", async () => {
+            const resp = await callAPI(`/api/v1/targets?iqn=${encodeURIComponent(iqn || "")}`, {
+              method: "DELETE"
+            });
+            if (resp.ok) {
+              showToast("ok", opSuccess(actionLabel("act_delete", "title_targets"), iqn));
+              setNote("target-note", opSuccess(actionLabel("act_delete", "title_targets"), iqn));
+            } else {
+              showToast("err", opFail(actionLabel("act_delete", "title_targets"), resp));
+              setNote("target-note", opFail(actionLabel("act_delete", "title_targets"), resp));
+            }
+            appendLog(actionLabel("act_delete", "title_targets"), resp);
+            await refreshTargets();
+            await refreshHealthAndSessions();
+          });
+
+          li.appendChild(txt);
+          li.appendChild(setCurrent);
+          li.appendChild(del);
+          root.appendChild(li);
+        }
+      }
+
+      async function refreshTargets() {
+        const resp = await callAPI("/api/v1/targets");
+        const items = resp.data && Array.isArray(resp.data.targets) ? resp.data.targets : [];
+        stateTargets = normalizeTargets(items);
+        refreshSelects();
+        if (!resp.ok) {
+          setNote("target-note", opFail(actionLabel("act_refresh", "title_targets"), resp));
+          showToast("err", opFail(actionLabel("act_refresh", "title_targets"), resp));
+          appendLog(opFail(actionLabel("act_refresh", "title_targets"), resp), resp);
+        } else {
+          setNote("target-note", tr("loaded_targets", { n: stateTargets.length, endpoint: resp.endpoint }));
+        }
+        renderTargets(stateTargets.map((iqn) => ({ iqn })));
+        renderReadiness();
+      }
+
+      function renderBackstores(items) {
+        const root = document.getElementById("backstore-list");
+        root.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.textContent = tr("no_backstores");
+          root.appendChild(li);
+          return;
+        }
+
+        for (const item of items) {
+          const name = item && item.name ? item.name : "";
+          const type = item && item.type ? item.type : "";
+          const li = document.createElement("li");
+          const txt = document.createElement("span");
+          txt.className = "mono";
+          txt.textContent = `${type || "?"}/${name || "?"}`;
+
+          const del = document.createElement("button");
+          del.className = "danger";
+          del.textContent = tr("btn_delete");
+          del.addEventListener("click", async () => {
+            const q = `name=${encodeURIComponent(name)}&type=${encodeURIComponent(type)}`;
+            const resp = await callAPI(`/api/v1/backstores?${q}`, { method: "DELETE" });
+            if (resp.ok) {
+              showToast("ok", opSuccess(actionLabel("act_delete", "title_backstores"), `${type}/${name}`));
+              setNote("backstore-note", opSuccess(actionLabel("act_delete", "title_backstores"), `${type}/${name}`));
+            } else {
+              showToast("err", opFail(actionLabel("act_delete", "title_backstores"), resp));
+              setNote("backstore-note", opFail(actionLabel("act_delete", "title_backstores"), resp));
+            }
+            appendLog(actionLabel("act_delete", "title_backstores"), resp);
+            await refreshBackstores();
+          });
+
+          li.appendChild(txt);
+          li.appendChild(del);
+          root.appendChild(li);
+        }
+      }
+
+      async function refreshBackstores() {
+        const resp = await callAPI("/api/v1/backstores");
+        const items = resp.data && Array.isArray(resp.data.backstores) ? resp.data.backstores : [];
+        stateBackstores = normalizeBackstores(items);
+        refreshSelects();
+        if (!resp.ok) {
+          setNote("backstore-note", opFail(actionLabel("act_refresh", "title_backstores"), resp));
+          showToast("err", opFail(actionLabel("act_refresh", "title_backstores"), resp));
+          appendLog(opFail(actionLabel("act_refresh", "title_backstores"), resp), resp);
+        } else {
+          setNote("backstore-note", tr("loaded_backstores", { n: stateBackstores.length, endpoint: resp.endpoint }));
+        }
+        renderBackstores(stateBackstores);
+        renderReadiness();
+      }
+
+      function renderMappings(items) {
+        const root = document.getElementById("mapping-list");
+        root.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.textContent = tr("no_mappings");
+          root.appendChild(li);
+          return;
+        }
+
+        for (const item of items) {
+          const lun = Number.isInteger(item.lun_id) ? item.lun_id : item.lun_id;
+          const bs = item.backstore_type && item.backstore_name ? `${item.backstore_type}/${item.backstore_name}` : "?/?";
+          const li = document.createElement("li");
+          const txt = document.createElement("span");
+          txt.className = "mono";
+          txt.textContent = `lun${lun} -> ${bs}`;
+
+          const del = document.createElement("button");
+          del.className = "danger";
+          del.textContent = tr("btn_delete");
+          del.addEventListener("click", async () => {
+            const targetIQN = stateCurrentTarget;
+            const q = `target_iqn=${encodeURIComponent(targetIQN)}&lun_id=${encodeURIComponent(lun)}`;
+            const resp = await callAPI(`/api/v1/mappings?${q}`, { method: "DELETE" });
+            if (resp.ok) {
+              showToast("ok", opSuccess(actionLabel("act_delete", "title_mappings"), `lun${lun}`));
+              setNote("mapping-note", opSuccess(actionLabel("act_delete", "title_mappings"), `lun${lun}`));
+            } else {
+              showToast("err", opFail(actionLabel("act_delete", "title_mappings"), resp));
+              setNote("mapping-note", opFail(actionLabel("act_delete", "title_mappings"), resp));
+            }
+            appendLog(actionLabel("act_delete", "title_mappings"), resp);
+            await refreshMappings();
+          });
+
+          li.appendChild(txt);
+          li.appendChild(del);
+          root.appendChild(li);
+        }
+      }
+
+      async function refreshMappings() {
+        const targetIQN = stateCurrentTarget;
+        if (!targetIQN) {
+          stateMappings = [];
+          renderMappings([]);
+          setNote("mapping-note", tr("note_select_current"));
+          renderReadiness();
+          return;
+        }
+        const resp = await callAPI(`/api/v1/mappings?target_iqn=${encodeURIComponent(targetIQN)}`);
+        const items = resp.data && Array.isArray(resp.data.mappings) ? resp.data.mappings : [];
+        stateMappings = items;
+        if (!resp.ok) {
+          setNote("mapping-note", opFail(actionLabel("act_refresh", "title_mappings"), resp));
+          showToast("err", opFail(actionLabel("act_refresh", "title_mappings"), resp));
+          appendLog(opFail(actionLabel("act_refresh", "title_mappings"), resp), resp);
+        } else {
+          setNote("mapping-note", tr("loaded_mappings", { n: items.length, target: targetIQN }));
+        }
+        renderMappings(items);
+        renderReadiness();
+      }
+
+      function renderACLs(items) {
+        const root = document.getElementById("acl-list");
+        root.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.textContent = tr("no_acls");
+          root.appendChild(li);
+          return;
+        }
+
+        for (const item of items) {
+          const initiator = item && item.initiator_iqn ? item.initiator_iqn : "";
+          const li = document.createElement("li");
+          const txt = document.createElement("span");
+          txt.className = "mono";
+          txt.textContent = initiator || "(unknown initiator)";
+
+          const del = document.createElement("button");
+          del.className = "danger";
+          del.textContent = tr("btn_delete");
+          del.addEventListener("click", async () => {
+            const targetIQN = stateCurrentTarget;
+            const q = `target_iqn=${encodeURIComponent(targetIQN)}&initiator_iqn=${encodeURIComponent(initiator)}`;
+            const resp = await callAPI(`/api/v1/acls?${q}`, { method: "DELETE" });
+            if (resp.ok) {
+              showToast("ok", opSuccess(actionLabel("act_delete", "title_acls"), initiator));
+              setNote("acl-note", opSuccess(actionLabel("act_delete", "title_acls"), initiator));
+            } else {
+              showToast("err", opFail(actionLabel("act_delete", "title_acls"), resp));
+              setNote("acl-note", opFail(actionLabel("act_delete", "title_acls"), resp));
+            }
+            appendLog(actionLabel("act_delete", "title_acls"), resp);
+            await refreshACLs();
+          });
+
+          li.appendChild(txt);
+          li.appendChild(del);
+          root.appendChild(li);
+        }
+      }
+
+      async function refreshACLs() {
+        const targetIQN = stateCurrentTarget;
+        if (!targetIQN) {
+          stateACLs = [];
+          renderACLs([]);
+          setNote("acl-note", tr("note_select_current"));
+          renderReadiness();
+          return;
+        }
+        const resp = await callAPI(`/api/v1/acls?target_iqn=${encodeURIComponent(targetIQN)}`);
+        const items = resp.data && Array.isArray(resp.data.acls) ? resp.data.acls : [];
+        stateACLs = items;
+        if (!resp.ok) {
+          setNote("acl-note", opFail(actionLabel("act_refresh", "title_acls"), resp));
+          showToast("err", opFail(actionLabel("act_refresh", "title_acls"), resp));
+          appendLog(opFail(actionLabel("act_refresh", "title_acls"), resp), resp);
+        } else {
+          setNote("acl-note", tr("loaded_acls", { n: items.length, target: targetIQN }));
+        }
+        renderACLs(items);
+        renderReadiness();
+      }
+
+      function renderPortals(items) {
+        const root = document.getElementById("portal-list");
+        root.innerHTML = "";
+        if (!items.length) {
+          const li = document.createElement("li");
+          li.textContent = tr("no_portals");
+          root.appendChild(li);
+          return;
+        }
+
+        for (const item of items) {
+          const ip = item && item.ip ? item.ip : "";
+          const port = Number(item && item.port ? item.port : 0);
+          const li = document.createElement("li");
+          const txt = document.createElement("span");
+          txt.className = "mono";
+          txt.textContent = `${ip}:${port}`;
+
+          const del = document.createElement("button");
+          del.className = "danger";
+          del.textContent = tr("btn_delete");
+          del.addEventListener("click", async () => {
+            const targetIQN = stateCurrentTarget;
+            const q = `target_iqn=${encodeURIComponent(targetIQN)}&ip=${encodeURIComponent(ip)}&port=${encodeURIComponent(port)}`;
+            const resp = await callAPI(`/api/v1/portals?${q}`, { method: "DELETE" });
+            if (resp.ok) {
+              showToast("ok", opSuccess(actionLabel("act_delete", "title_portals"), `${ip}:${port}`));
+              setNote("portal-note", opSuccess(actionLabel("act_delete", "title_portals"), `${ip}:${port}`));
+            } else {
+              showToast("err", opFail(actionLabel("act_delete", "title_portals"), resp));
+              setNote("portal-note", opFail(actionLabel("act_delete", "title_portals"), resp));
+            }
+            appendLog(actionLabel("act_delete", "title_portals"), resp);
+            await refreshPortals();
+          });
+
+          li.appendChild(txt);
+          li.appendChild(del);
+          root.appendChild(li);
+        }
+      }
+
+      async function refreshPortals() {
+        const targetIQN = stateCurrentTarget;
+        if (!targetIQN) {
+          statePortals = [];
+          renderPortals([]);
+          setNote("portal-note", tr("note_select_current"));
+          renderReadiness();
+          return;
+        }
+        const resp = await callAPI(`/api/v1/portals?target_iqn=${encodeURIComponent(targetIQN)}`);
+        const items = resp.data && Array.isArray(resp.data.portals) ? resp.data.portals : [];
+        statePortals = items;
+        if (!resp.ok) {
+          setNote("portal-note", opFail(actionLabel("act_refresh", "title_portals"), resp));
+          showToast("err", opFail(actionLabel("act_refresh", "title_portals"), resp));
+          appendLog(opFail(actionLabel("act_refresh", "title_portals"), resp), resp);
+        } else {
+          setNote("portal-note", tr("loaded_portals", { n: items.length, target: targetIQN }));
+        }
+        renderPortals(items);
+        renderReadiness();
+      }
+
+      function renderCHAP(state) {
+        const enabled = !!(state && state.enabled);
+        const hasUser = !!String((state && state.userid) || "").trim();
+        const hasPass = !!(state && state.password_set);
+        document.getElementById("chap-enabled").checked = enabled;
+        document.getElementById("chap-userid").value = (state && state.userid) || "";
+        document.getElementById("chap-password").value = "";
+        document.getElementById("chap-json").textContent = toLog(state || {});
+        if (!enabled) {
+          setNote("chap-note", tr("chap_state_off"));
+        } else if (hasUser && hasPass) {
+          setNote("chap-note", tr("chap_state_on"));
+        } else {
+          setNote("chap-note", tr("chap_state_incomplete"));
+        }
+        document.getElementById("chap-userid").disabled = !enabled;
+        document.getElementById("chap-password").disabled = !enabled;
+      }
+
+      async function refreshCHAP() {
+        const targetIQN = stateCurrentTarget;
+        if (!targetIQN) {
+          stateCHAP = null;
+          renderCHAP(null);
+          setNote("chap-note", tr("note_select_current"));
+          renderReadiness();
+          return;
+        }
+        const resp = await callAPI(`/api/v1/auth/chap?target_iqn=${encodeURIComponent(targetIQN)}`);
+        if (!resp.ok) {
+          setNote("chap-note", opFail(actionLabel("act_refresh", "title_chap"), resp));
+          showToast("err", opFail(actionLabel("act_refresh", "title_chap"), resp));
+          appendLog(opFail(actionLabel("act_refresh", "title_chap"), resp), resp);
+          stateCHAP = null;
+          renderCHAP(null);
+          renderReadiness();
+          return;
+        }
+        stateCHAP = resp.data && resp.data.chap ? resp.data.chap : null;
+        renderCHAP(stateCHAP);
+        renderReadiness();
+      }
+
+      function bindForms() {
+        document.getElementById("target-create-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const iqn = document.getElementById("target-iqn").value.trim();
+          if (!iqn) {
+            return;
+          }
+
+          const resp = await callAPI("/api/v1/targets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ iqn })
+          });
+
+          if (resp.ok) {
+            showToast("ok", opSuccess(actionLabel("act_create", "title_targets"), iqn));
+            setNote("target-note", opSuccess(actionLabel("act_create", "title_targets"), iqn));
+          } else {
+            showToast("err", opFail(actionLabel("act_create", "title_targets"), resp));
+            setNote("target-note", opFail(actionLabel("act_create", "title_targets"), resp));
+          }
+          appendLog(actionLabel("act_create", "title_targets"), resp);
+          await refreshTargets();
+          await refreshHealthAndSessions();
+        });
+
+        document.getElementById("backstore-create-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const payload = {
+            name: document.getElementById("backstore-name").value.trim(),
+            type: document.getElementById("backstore-type").value,
+            path: document.getElementById("backstore-path").value.trim(),
+            size: document.getElementById("backstore-size").value.trim()
+          };
+
+          const resp = await callAPI("/api/v1/backstores", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+
+          if (resp.ok) {
+            showToast("ok", opSuccess(actionLabel("act_create", "title_backstores"), `${payload.type}/${payload.name}`));
+            setNote("backstore-note", opSuccess(actionLabel("act_create", "title_backstores"), `${payload.type}/${payload.name}`));
+          } else {
+            showToast("err", opFail(actionLabel("act_create", "title_backstores"), resp));
+            setNote("backstore-note", opFail(actionLabel("act_create", "title_backstores"), resp));
+          }
+          appendLog(actionLabel("act_create", "title_backstores"), resp);
+          await refreshBackstores();
+        });
+
+        document.getElementById("mapping-create-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const targetIQN = stateCurrentTarget;
+          const bsValue = document.getElementById("mapping-backstore").value;
+          const lunRaw = document.getElementById("mapping-lun").value.trim();
+          if (!targetIQN || !bsValue) {
+            showToast("err", tr("err_need_target_backstore"));
+            return;
+          }
+
+          const [backstoreType, backstoreName] = bsValue.split("/");
+          const payload = {
+            target_iqn: targetIQN,
+            backstore_type: backstoreType,
+            backstore_name: backstoreName
+          };
+          if (lunRaw !== "") {
+            payload.lun_id = Number(lunRaw);
+          }
+
+          const resp = await callAPI("/api/v1/mappings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (resp.ok) {
+            showToast("ok", opSuccess(actionLabel("act_create", "title_mappings"), `target=${targetIQN}`));
+            setNote("mapping-note", opSuccess(actionLabel("act_create", "title_mappings"), `target=${targetIQN}`));
+          } else {
+            showToast("err", opFail(actionLabel("act_create", "title_mappings"), resp));
+            setNote("mapping-note", opFail(actionLabel("act_create", "title_mappings"), resp));
+          }
+          appendLog(actionLabel("act_create", "title_mappings"), resp);
+          await refreshMappings();
+        });
+
+        document.getElementById("acl-create-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const targetIQN = stateCurrentTarget;
+          const initiatorIQN = document.getElementById("acl-initiator").value.trim();
+          if (!targetIQN || !initiatorIQN) {
+            showToast("err", tr("err_need_acl_fields"));
+            return;
+          }
+
+          const resp = await callAPI("/api/v1/acls", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ target_iqn: targetIQN, initiator_iqn: initiatorIQN })
+          });
+          if (resp.ok) {
+            showToast("ok", opSuccess(actionLabel("act_create", "title_acls"), initiatorIQN));
+            setNote("acl-note", opSuccess(actionLabel("act_create", "title_acls"), initiatorIQN));
+          } else {
+            showToast("err", opFail(actionLabel("act_create", "title_acls"), resp));
+            setNote("acl-note", opFail(actionLabel("act_create", "title_acls"), resp));
+          }
+          appendLog(actionLabel("act_create", "title_acls"), resp);
+          await refreshACLs();
+        });
+
+        document.getElementById("portal-create-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const targetIQN = stateCurrentTarget;
+          const ip = document.getElementById("portal-ip").value.trim();
+          const portRaw = document.getElementById("portal-port").value.trim();
+          if (!targetIQN || !ip) {
+            showToast("err", tr("err_need_portal_fields"));
+            return;
+          }
+
+          const payload = { target_iqn: targetIQN, ip, port: portRaw === "" ? 3260 : Number(portRaw) };
+          const resp = await callAPI("/api/v1/portals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (resp.ok) {
+            showToast("ok", opSuccess(actionLabel("act_create", "title_portals"), `${payload.ip}:${payload.port}`));
+            setNote("portal-note", opSuccess(actionLabel("act_create", "title_portals"), `${payload.ip}:${payload.port}`));
+          } else {
+            showToast("err", opFail(actionLabel("act_create", "title_portals"), resp));
+            setNote("portal-note", opFail(actionLabel("act_create", "title_portals"), resp));
+          }
+          appendLog(actionLabel("act_create", "title_portals"), resp);
+          await refreshPortals();
+        });
+
+        document.getElementById("chap-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const targetIQN = stateCurrentTarget;
+          const enabled = document.getElementById("chap-enabled").checked;
+          const userid = document.getElementById("chap-userid").value.trim();
+          const password = document.getElementById("chap-password").value.trim();
+          if (!targetIQN) {
+            showToast("err", tr("note_select_current"));
+            return;
+          }
+          if (enabled && (!userid || !password)) {
+            showToast("err", tr("err_chap_need_fields"));
+            return;
+          }
+
+          const payload = { target_iqn: targetIQN, enabled, userid, password };
+          const resp = await callAPI("/api/v1/auth/chap", {
+            method: "PUT",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify(payload)
+          });
+          if (resp.ok) {
+            showToast("ok", opSuccess(actionLabel("act_refresh", "title_chap"), targetIQN));
+            setNote("chap-note", opSuccess(actionLabel("act_refresh", "title_chap"), targetIQN));
+          } else {
+            showToast("err", opFail(actionLabel("act_refresh", "title_chap"), resp));
+            setNote("chap-note", opFail(actionLabel("act_refresh", "title_chap"), resp));
+          }
+          appendLog(actionLabel("act_refresh", "title_chap"), resp);
+          document.getElementById("chap-password").value = "";
+          await refreshCHAP();
+        });
+
+        document.getElementById("backstore-type").addEventListener("change", (e) => {
+          const sizeInput = document.getElementById("backstore-size");
+          const t = e.target.value;
+          if (t === "fileio") {
+            sizeInput.placeholder = tr("ph_backstore_size_fileio");
+          } else {
+            sizeInput.placeholder = tr("ph_backstore_size_block");
+          }
+        });
+
+        document.getElementById("current-target").addEventListener("change", async (e) => {
+          stateCurrentTarget = e.target.value || "";
+          refreshSelects();
+          await refreshMappings();
+          await refreshACLs();
+          await refreshPortals();
+          await refreshCHAP();
+          await refreshAuditLogs();
+        });
+
+        document.getElementById("chap-enabled").addEventListener("change", (e) => {
+          const on = !!e.target.checked;
+          document.getElementById("chap-userid").disabled = !on;
+          document.getElementById("chap-password").disabled = !on;
+        });
+      }
+
+      function bindButtons() {
+        document.getElementById("btn-refresh-all").addEventListener("click", async () => {
+          await refreshAll();
+        });
+        document.getElementById("btn-refresh-targets").addEventListener("click", async () => {
+          await refreshTargets();
+        });
+        document.getElementById("btn-refresh-backstores").addEventListener("click", async () => {
+          await refreshBackstores();
+        });
+        document.getElementById("btn-refresh-mappings").addEventListener("click", async () => {
+          await refreshMappings();
+        });
+        document.getElementById("btn-refresh-acls").addEventListener("click", async () => {
+          await refreshACLs();
+        });
+        document.getElementById("btn-refresh-portals").addEventListener("click", async () => {
+          await refreshPortals();
+        });
+        document.getElementById("btn-refresh-chap").addEventListener("click", async () => {
+          await refreshCHAP();
+        });
+        document.getElementById("btn-refresh-logs").addEventListener("click", async () => {
+          await refreshAuditLogs();
+        });
+        document.getElementById("btn-refresh-dependent").addEventListener("click", async () => {
+          await Promise.all([refreshMappings(), refreshACLs(), refreshPortals(), refreshCHAP()]);
+          await refreshAuditLogs();
+        });
+        document.getElementById("lang-select").addEventListener("change", async (e) => {
+          stateLang = e.target.value === "en" ? "en" : "zh";
+          try {
+            localStorage.setItem("iscsi_gui_lang", stateLang);
+          } catch {}
+          applyI18N();
+          renderTargets(stateTargets.map((iqn) => ({ iqn })));
+          renderBackstores(stateBackstores);
+          renderMappings(stateMappings);
+          renderACLs(stateACLs);
+          renderPortals(statePortals);
+          renderCHAP(stateCHAP);
+          renderReadiness();
+        });
+        document.getElementById("btn-theme").addEventListener("click", () => {
+          stateTheme = stateTheme === "light" ? "dark" : "light";
+          try {
+            localStorage.setItem("iscsi_gui_theme", stateTheme);
+          } catch {}
+          applyTheme();
+        });
+      }
+
+      async function refreshAll() {
+        await Promise.all([refreshHealthAndSessions(), refreshTargets(), refreshBackstores()]);
+        await Promise.all([refreshMappings(), refreshACLs(), refreshPortals(), refreshCHAP()]);
+        await refreshAuditLogs();
+      }
+
+      initPreferences();
+      bindForms();
+      bindButtons();
+      applyI18N();
+      refreshAll();
+    </script>
+  </body>
+</html>

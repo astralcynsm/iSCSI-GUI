@@ -1,0 +1,31 @@
+{
+  "name": "iscsi_gui",
+  "ui": {
+    "name": "iscsi_gui",
+    "title": {
+      "en_us": "iSCSI GUI"
+    },
+    "prefetch": true,
+    "show": true,
+    "entry": "/modules/iscsi_gui/index.html?v=20260327-m3o",
+    "icon": "/modules/iscsi_gui/appicon.svg",
+    "description": "iSCSI target management module",
+    "formality": {
+      "type": "newtab",
+      "props": {
+        "width": "100vh",
+        "height": "100vh",
+        "hasModalCard": true,
+        "animation": "zoom-in"
+      }
+    }
+  },
+  "services": [
+    {
+      "name": "iscsi-agent"
+    },
+    {
+      "name": "iscsi-web-gateway"
+    }
+  ]
+}
