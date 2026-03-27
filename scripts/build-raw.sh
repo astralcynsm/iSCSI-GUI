@@ -41,12 +41,16 @@ if [[ ! -f "$GATEWAY_SERVICE_SRC" ]]; then
 fi
 
 echo "staging agent binary"
+mkdir -p "$(dirname "$AGENT_DST")"
 install -m 0755 "$AGENT_BIN" "$AGENT_DST"
 
 echo "staging gateway binary"
+mkdir -p "$(dirname "$GATEWAY_DST")"
 install -m 0755 "$GATEWAY_BIN" "$GATEWAY_DST"
 
 echo "staging systemd units"
+mkdir -p "$(dirname "$AGENT_SERVICE_DST")"
+mkdir -p "$(dirname "$GATEWAY_SERVICE_DST")"
 install -m 0644 "$AGENT_SERVICE_SRC" "$AGENT_SERVICE_DST"
 install -m 0644 "$GATEWAY_SERVICE_SRC" "$GATEWAY_SERVICE_DST"
 
