@@ -1,0 +1,89 @@
+name: release-raw
+
+on:
+  push:
+    tags:
+      - "v*"
+      - "V*"
+  workflow_dispatch:
+    inputs:
+      release_tag:
+        description: "Release tag to publish (example: v1.0.0Beta)"
+        required: true
+        default: "v1.0.0Beta"
+      publish_latest:
+        description: "Also publish/update latest tag release"
+        required: true
+        type: boolean
+        default: true
+
+permissions:
+  contents: write
+
+jobs:
+  build-and-release:
+    runs-on: ubuntu-latest
+    env:
+      RAW_FILE: iscsi_gui.raw
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Setup Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: agent/go.mod
+
+      - name: Install squashfs-tools
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y squashfs-tools
+
+      - name: Resolve release tag
+        id: meta
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [[ "${GITHUB_EVENT_NAME}" == "workflow_dispatch" ]]; then
+            TAG="${{ inputs.release_tag }}"
+          else
+            TAG="${GITHUB_REF_NAME}"
+          fi
+          if [[ -z "${TAG}" ]]; then
+            echo "release tag is empty"
+            exit 1
+          fi
+          echo "tag=${TAG}" >> "$GITHUB_OUTPUT"
+          echo "resolved release tag: ${TAG}"
+
+      - name: Build raw package
+        env:
+          GOCACHE: /tmp/go-build
+        run: |
+          make build-raw
+          test -f "${RAW_FILE}"
+          ls -lh "${RAW_FILE}"
+
+      - name: Publish release (version tag)
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: ${{ steps.meta.outputs.tag }}
+          name: ${{ steps.meta.outputs.tag }}
+          files: ${{ env.RAW_FILE }}
+          draft: false
+          prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: true
+
+      - name: Publish release (latest tag)
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.publish_latest }}
+        uses: softprops/action-gh-release@v2
+        with:
+          tag_name: latest
+          name: latest
+          files: ${{ env.RAW_FILE }}
+          draft: false
+          prerelease: false
+          make_latest: true
+          fail_on_unmatched_files: true
+
