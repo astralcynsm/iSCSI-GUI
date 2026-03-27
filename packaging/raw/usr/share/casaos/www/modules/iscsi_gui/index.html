@@ -387,6 +387,18 @@
         min-width: 98px;
       }
 
+      .top-controls .mode-select {
+        min-width: 110px;
+      }
+
+      [data-ui-mode="simple"] .advanced-only {
+        display: none;
+      }
+
+      [data-ui-mode="advanced"] .simple-only {
+        display: none;
+      }
+
       [data-theme="dark"] .top-controls button,
       [data-theme="dark"] .top-controls select {
         border-color: #4e6658;
@@ -440,8 +452,12 @@
       }
     </style>
   </head>
-  <body data-theme="light">
+  <body data-theme="light" data-ui-mode="advanced">
     <div class="top-controls">
+      <select id="mode-select" class="mode-select">
+        <option value="simple">Simple</option>
+        <option value="advanced">Advanced</option>
+      </select>
       <select id="lang-select" class="lang-select">
         <option value="zh">中文</option>
         <option value="en">EN</option>
@@ -451,8 +467,8 @@
     <div id="toast-wrap" class="toast-wrap" aria-live="polite"></div>
     <div class="shell">
       <section class="hero">
-        <h1 id="ui-title" class="title">iSCSI GUI / M3 Flow A</h1>
-        <p id="ui-subtitle" class="subtitle">当前页面可直接管理目标/存储后端/映射/ACL，并显示健康状态与会话。</p>
+        <h1 id="ui-title" class="title">iSCSI 管理</h1>
+        <p id="ui-subtitle" class="subtitle">面向日常使用的 iSCSI 管理界面：快速创建与高级配置都可用。</p>
       </section>
 
       <section class="grid">
@@ -485,7 +501,36 @@
           <div id="current-target-note" class="note">请选择当前目标作为后续操作上下文</div>
         </article>
 
-        <article class="card targets">
+        <article class="card simple-only">
+          <div class="card-head">
+            <h2 id="title-quick-setup" class="card-title">Quick Setup</h2>
+          </div>
+          <form id="quick-setup-form">
+            <div class="row">
+              <input id="quick-target-iqn" placeholder="iqn.2026-03.local.zima:demo01" required />
+            </div>
+            <div class="row two">
+              <input id="quick-backstore-name" placeholder="bs_demo" required />
+              <input id="quick-backstore-size" placeholder="1G" />
+            </div>
+            <div class="row">
+              <input id="quick-backstore-path" placeholder="/DATA/iscsi-gui/bs_demo.img" required />
+            </div>
+            <div class="row two">
+              <input id="quick-portal-ip" placeholder="0.0.0.0" />
+              <input id="quick-portal-port" type="number" min="1" max="65535" placeholder="3260" />
+            </div>
+            <div class="row">
+              <input id="quick-initiator-iqn" placeholder="iqn.2016-04.com.open-iscsi:xxxx (optional)" />
+            </div>
+            <div class="actions">
+              <button id="btn-quick-setup" type="submit">One-Click Setup</button>
+            </div>
+          </form>
+          <div id="quick-setup-note" class="note">Create target/backstore/mapping/portal in one flow.</div>
+        </article>
+
+        <article class="card targets advanced-only">
           <div class="card-head">
             <h2 id="title-targets" class="card-title">目标</h2>
             <button id="btn-refresh-targets">Refresh</button>
@@ -507,7 +552,7 @@
           </div>
         </article>
 
-        <article class="card backstores">
+        <article class="card backstores advanced-only">
           <div class="card-head">
             <h2 id="title-backstores" class="card-title">存储后端</h2>
             <button id="btn-refresh-backstores">Refresh</button>
@@ -539,7 +584,7 @@
           </div>
         </article>
 
-        <article class="card mappings">
+        <article class="card mappings advanced-only">
           <div class="card-head">
             <h2 id="title-mappings" class="card-title">Mappings (LUN)</h2>
             <button id="btn-refresh-mappings">Refresh</button>
@@ -565,7 +610,7 @@
           </div>
         </article>
 
-        <article class="card acls">
+        <article class="card acls advanced-only">
           <div class="card-head">
             <h2 id="title-acls" class="card-title">ACLs</h2>
             <button id="btn-refresh-acls">Refresh</button>
@@ -588,7 +633,7 @@
           </div>
         </article>
 
-        <article class="card portals">
+        <article class="card portals advanced-only">
           <div class="card-head">
             <h2 id="title-portals" class="card-title">Portals</h2>
             <button id="btn-refresh-portals">Refresh</button>
@@ -614,7 +659,7 @@
           </div>
         </article>
 
-        <article class="card chap">
+        <article class="card chap advanced-only">
           <div class="card-head">
             <h2 id="title-chap" class="card-title">CHAP Auth</h2>
             <button id="btn-refresh-chap">Refresh</button>
@@ -676,11 +721,12 @@
 
       const I18N = {
         zh: {
-          ui_title: "iSCSI GUI / M3 Flow A",
-          ui_subtitle: "当前页面可直接管理目标/存储后端/映射/ACL，并显示健康状态与会话。",
+          ui_title: "iSCSI 管理",
+          ui_subtitle: "面向日常使用的 iSCSI 管理界面：快速创建与高级配置都可用。",
           title_health: "系统健康",
           title_sessions: "会话",
           title_current_target: "当前目标",
+          title_quick_setup: "快速创建",
           title_targets: "目标",
           title_backstores: "存储后端",
           title_mappings: "映射 (LUN)",
@@ -699,6 +745,7 @@
           btn_create_acl: "创建 ACL",
           btn_create_portal: "创建入口",
           btn_save_chap: "保存 CHAP",
+          btn_quick_setup: "一键创建",
           btn_set_current: "设为当前",
           btn_current: "当前目标",
           btn_delete: "删除",
@@ -714,7 +761,18 @@
           label_readiness_sub: "当前目标登录前提：",
           label_log_loaded: "已加载 {n} 条审计日志",
           label_foot: "API: /api/v1/*（同源失败时回退到 :18081 gateway）",
+          mode_simple: "简单模式",
+          mode_advanced: "高级模式",
           note_select_current: "请选择当前目标作为后续操作上下文",
+          quick_setup_note: "一次创建 Target/Backstore/Mapping/Portal，可选追加 ACL。",
+          quick_setup_ok: "快速创建完成",
+          quick_setup_failed: "快速创建失败（步骤：{step}）",
+          quick_step_target: "创建 Target",
+          quick_step_backstore: "创建 Backstore",
+          quick_step_mapping: "创建 Mapping",
+          quick_step_portal: "创建 Portal",
+          quick_step_acl: "创建 ACL",
+          quick_need_fields: "快速创建失败：Target IQN、Backstore Name、Backstore Path 不能为空",
           no_targets: "无目标",
           no_backstores: "无存储后端",
           no_mappings: "无映射",
@@ -732,6 +790,8 @@
           ph_portal_port: "3260（默认）",
           ph_chap_userid: "demo-user",
           ph_chap_password: "demo-pass-123",
+          ph_quick_backstore_size: "1G（默认）",
+          ph_quick_acl_optional: "iqn.2016-04.com.open-iscsi:xxxx（可选）",
           chap_enabled_label: "启用",
           chap_state_on: "CHAP 已启用",
           chap_state_off: "CHAP 已关闭",
@@ -792,11 +852,12 @@
           theme_night: "Night"
         },
         en: {
-          ui_title: "iSCSI GUI / M3 Flow A",
-          ui_subtitle: "Manage Targets/Backstores/Mappings/ACLs with live Health and Sessions.",
+          ui_title: "iSCSI Manager",
+          ui_subtitle: "A practical iSCSI management console with quick setup and advanced controls.",
           title_health: "System Health",
           title_sessions: "Sessions",
           title_current_target: "Current Target",
+          title_quick_setup: "Quick Setup",
           title_targets: "Targets",
           title_backstores: "Backstores",
           title_mappings: "Mappings (LUN)",
@@ -815,6 +876,7 @@
           btn_create_acl: "Create ACL",
           btn_create_portal: "Create Portal",
           btn_save_chap: "Save CHAP",
+          btn_quick_setup: "One-Click Setup",
           btn_set_current: "Set Current",
           btn_current: "Current",
           btn_delete: "Delete",
@@ -830,7 +892,18 @@
           label_readiness_sub: "Login prerequisites for current target:",
           label_log_loaded: "loaded {n} audit log(s)",
           label_foot: "API: /api/v1/* (fallback to :18081 gateway when needed)",
+          mode_simple: "Simple",
+          mode_advanced: "Advanced",
           note_select_current: "Select a Current Target to drive dependent operations",
+          quick_setup_note: "Create Target/Backstore/Mapping/Portal in one flow, with optional ACL.",
+          quick_setup_ok: "Quick setup completed",
+          quick_setup_failed: "Quick setup failed (step: {step})",
+          quick_step_target: "Create Target",
+          quick_step_backstore: "Create Backstore",
+          quick_step_mapping: "Create Mapping",
+          quick_step_portal: "Create Portal",
+          quick_step_acl: "Create ACL",
+          quick_need_fields: "Quick setup failed: Target IQN, Backstore Name and Backstore Path are required",
           no_targets: "no targets",
           no_backstores: "no backstores",
           no_mappings: "no mappings",
@@ -848,6 +921,8 @@
           ph_portal_port: "3260 (default)",
           ph_chap_userid: "demo-user",
           ph_chap_password: "demo-pass-123",
+          ph_quick_backstore_size: "1G (default)",
+          ph_quick_acl_optional: "iqn.2016-04.com.open-iscsi:xxxx (optional)",
           chap_enabled_label: "enabled",
           chap_state_on: "CHAP is enabled",
           chap_state_off: "CHAP is disabled",
@@ -911,6 +986,7 @@
 
       let stateLang = "zh";
       let stateTheme = "light";
+      let stateMode = "simple";
 
       function tr(key, vars = {}) {
         const dict = I18N[stateLang] || I18N.en;
@@ -943,12 +1019,21 @@
         }
       }
 
+      function applyMode() {
+        document.body.setAttribute("data-ui-mode", stateMode);
+        const modeSelect = document.getElementById("mode-select");
+        if (modeSelect) {
+          modeSelect.value = stateMode;
+        }
+      }
+
       function applyI18N() {
         setText("ui-title", "ui_title");
         setText("ui-subtitle", "ui_subtitle");
         setText("title-health", "title_health");
         setText("title-sessions", "title_sessions");
         setText("title-current-target", "title_current_target");
+        setText("title-quick-setup", "title_quick_setup");
         setText("title-targets", "title_targets");
         setText("title-backstores", "title_backstores");
         setText("title-mappings", "title_mappings");
@@ -972,6 +1057,7 @@
         setText("btn-create-acl", "btn_create_acl");
         setText("btn-create-portal", "btn_create_portal");
         setText("btn-save-chap", "btn_save_chap");
+        setText("btn-quick-setup", "btn_quick_setup");
         setText("label-existing-targets", "label_existing_targets");
         setText("label-existing-backstores", "label_existing_backstores");
         setText("label-existing-mappings", "label_existing_mappings");
@@ -994,7 +1080,14 @@
         if (langSelect) {
           langSelect.value = stateLang;
         }
+        const modeSelect = document.getElementById("mode-select");
+        if (modeSelect) {
+          modeSelect.options[0].textContent = tr("mode_simple");
+          modeSelect.options[1].textContent = tr("mode_advanced");
+          modeSelect.value = stateMode;
+        }
         applyTheme();
+        applyMode();
 
         const targetIqn = document.getElementById("target-iqn");
         const bsName = document.getElementById("backstore-name");
@@ -1006,6 +1099,13 @@
         const portalPort = document.getElementById("portal-port");
         const chapUser = document.getElementById("chap-userid");
         const chapPass = document.getElementById("chap-password");
+        const quickTargetIqn = document.getElementById("quick-target-iqn");
+        const quickBsName = document.getElementById("quick-backstore-name");
+        const quickBsPath = document.getElementById("quick-backstore-path");
+        const quickPortalIP = document.getElementById("quick-portal-ip");
+        const quickPortalPort = document.getElementById("quick-portal-port");
+        const quickSize = document.getElementById("quick-backstore-size");
+        const quickAcl = document.getElementById("quick-initiator-iqn");
         const chapEnabledLabel = document.querySelector('label[for="chap-enabled"]');
         if (targetIqn) targetIqn.placeholder = tr("ph_target_iqn");
         if (bsName) bsName.placeholder = tr("ph_backstore_name");
@@ -1017,7 +1117,15 @@
         if (portalPort) portalPort.placeholder = tr("ph_portal_port");
         if (chapUser) chapUser.placeholder = tr("ph_chap_userid");
         if (chapPass) chapPass.placeholder = tr("ph_chap_password");
+        if (quickTargetIqn) quickTargetIqn.placeholder = tr("ph_target_iqn");
+        if (quickBsName) quickBsName.placeholder = tr("ph_backstore_name");
+        if (quickBsPath) quickBsPath.placeholder = tr("ph_backstore_path");
+        if (quickPortalIP) quickPortalIP.placeholder = tr("ph_portal_ip");
+        if (quickPortalPort) quickPortalPort.placeholder = tr("ph_portal_port");
+        if (quickSize) quickSize.placeholder = tr("ph_quick_backstore_size");
+        if (quickAcl) quickAcl.placeholder = tr("ph_quick_acl_optional");
         if (chapEnabledLabel) chapEnabledLabel.textContent = tr("chap_enabled_label");
+        setNote("quick-setup-note", tr("quick_setup_note"));
 
         refreshSelects();
         renderReadiness();
@@ -1027,6 +1135,7 @@
         try {
           const lang = localStorage.getItem("iscsi_gui_lang");
           const theme = localStorage.getItem("iscsi_gui_theme");
+          const mode = localStorage.getItem("iscsi_gui_mode");
           if (lang === "zh" || lang === "en") {
             stateLang = lang;
           } else {
@@ -1035,8 +1144,12 @@
           if (theme === "light" || theme === "dark") {
             stateTheme = theme;
           }
+          if (mode === "simple" || mode === "advanced") {
+            stateMode = mode;
+          }
         } catch {}
         applyTheme();
+        applyMode();
       }
 
       async function callAPI(path, options = {}) {
@@ -1769,6 +1882,112 @@
           await refreshHealthAndSessions();
         });
 
+        document.getElementById("quick-setup-form").addEventListener("submit", async (e) => {
+          e.preventDefault();
+          const targetIQN = document.getElementById("quick-target-iqn").value.trim();
+          const backstoreName = document.getElementById("quick-backstore-name").value.trim();
+          const backstorePath = document.getElementById("quick-backstore-path").value.trim();
+          const backstoreSize = document.getElementById("quick-backstore-size").value.trim() || "1G";
+          const portalIP = document.getElementById("quick-portal-ip").value.trim() || "0.0.0.0";
+          const portalPort = Number(document.getElementById("quick-portal-port").value.trim() || "3260");
+          const initiatorIQN = document.getElementById("quick-initiator-iqn").value.trim();
+
+          if (!targetIQN || !backstoreName || !backstorePath) {
+            showToast("err", tr("quick_need_fields"));
+            setNote("quick-setup-note", tr("quick_need_fields"));
+            return;
+          }
+
+          const failStep = (step, resp) => {
+            const msg = `${tr("quick_setup_failed", { step })}: ${apiErrorMessage(resp)}`;
+            showToast("err", msg);
+            setNote("quick-setup-note", msg);
+            appendLog(step, resp);
+          };
+
+          const targetResp = await callAPI("/api/v1/targets", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({ iqn: targetIQN })
+          });
+          if (!targetResp.ok) {
+            failStep(tr("quick_step_target"), targetResp);
+            return;
+          }
+
+          const backstoreResp = await callAPI("/api/v1/backstores", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              name: backstoreName,
+              type: "fileio",
+              path: backstorePath,
+              size: backstoreSize
+            })
+          });
+          if (!backstoreResp.ok) {
+            failStep(tr("quick_step_backstore"), backstoreResp);
+            return;
+          }
+
+          const mappingResp = await callAPI("/api/v1/mappings", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              target_iqn: targetIQN,
+              backstore_type: "fileio",
+              backstore_name: backstoreName,
+              lun_id: 0
+            })
+          });
+          if (!mappingResp.ok) {
+            failStep(tr("quick_step_mapping"), mappingResp);
+            return;
+          }
+
+          const portalResp = await callAPI("/api/v1/portals", {
+            method: "POST",
+            headers: { "Content-Type": "application/json" },
+            body: JSON.stringify({
+              target_iqn: targetIQN,
+              ip: portalIP,
+              port: portalPort
+            })
+          });
+          if (!portalResp.ok) {
+            failStep(tr("quick_step_portal"), portalResp);
+            return;
+          }
+
+          if (initiatorIQN) {
+            const aclResp = await callAPI("/api/v1/acls", {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({
+                target_iqn: targetIQN,
+                initiator_iqn: initiatorIQN
+              })
+            });
+            if (!aclResp.ok) {
+              failStep(tr("quick_step_acl"), aclResp);
+              return;
+            }
+          }
+
+          showToast("ok", `${tr("quick_setup_ok")}: ${targetIQN}`);
+          setNote("quick-setup-note", `${tr("quick_setup_ok")}: ${targetIQN}`);
+          await refreshTargets();
+          const sel = document.getElementById("current-target");
+          if (sel) {
+            sel.value = targetIQN;
+          }
+          stateCurrentTarget = targetIQN;
+          refreshSelects();
+          await Promise.all([refreshBackstores(), refreshMappings(), refreshACLs(), refreshPortals(), refreshCHAP()]);
+          await refreshHealthAndSessions();
+          await refreshAuditLogs();
+        });
+
         document.getElementById("backstore-create-form").addEventListener("submit", async (e) => {
           e.preventDefault();
           const payload = {
@@ -1985,6 +2204,13 @@
           renderPortals(statePortals);
           renderCHAP(stateCHAP);
           renderReadiness();
+        });
+        document.getElementById("mode-select").addEventListener("change", (e) => {
+          stateMode = e.target.value === "advanced" ? "advanced" : "simple";
+          try {
+            localStorage.setItem("iscsi_gui_mode", stateMode);
+          } catch {}
+          applyMode();
         });
         document.getElementById("btn-theme").addEventListener("click", () => {
           stateTheme = stateTheme === "light" ? "dark" : "light";
